@@ -642,6 +642,48 @@ fn about_renders_every_tab() {
 }
 
 #[test]
+fn clicking_contributor_opens_github_url() {
+    use std::sync::{Arc, Mutex};
+    let opened = Arc::new(Mutex::new(Vec::new()));
+    let opened_clone = opened.clone();
+
+    let mut app = SheetApp::new(blank(), Default::default());
+    app.services.open_url = Some(Box::new(move |url: &str| {
+        opened_clone.lock().unwrap().push(url.to_string());
+    }));
+
+    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_ui_state(
+        |ui, app: &mut SheetApp| {
+            let ctx = ui.ctx().clone();
+            app.logic(&ctx);
+            app.ui(ui);
+        },
+        app,
+    );
+    h.run_steps(4);
+    h.state_mut().open_dialog("about", json!({"tab": "Contributors"}));
+    h.run_steps(2);
+
+    // Click the contributor link
+    if let Some(node) = h.query_by_label("@deekshitha") {
+        node.click();
+    } else if let Some(node) = h.query_by_label("Deekshitha") {
+        node.click();
+    }
+    h.run_steps(2);
+
+    if let Some(node) = h.query_by_label("@sarika") {
+        node.click();
+    } else if let Some(node) = h.query_by_label("Sarika") {
+        node.click();
+    }
+    h.run_steps(2);
+
+    let urls = opened.lock().unwrap().clone();
+    assert_eq!(urls, vec!["https://github.com/deekshitha", "https://github.com/BORAVELLISARIKAREDDY/BORAVELLISARIKAREDDY"]);
+}
+
+#[test]
 fn column_autocomplete_completes_on_enter() {
     let mut s = blank();
     s.execute("range.setValues", json!({"range": "A1", "values": [["North"], ["East"], ["Eastern"]]})).unwrap();

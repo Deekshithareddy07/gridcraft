@@ -39,8 +39,8 @@ include!(concat!(env!("OUT_DIR"), "/credits.rs"));
 /// Which name to show. Display and real names fall back to the `@username` when not given.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum NameMode {
-    #[default]
     Username,
+    #[default]
     DisplayName,
     RealName,
 }
@@ -217,7 +217,7 @@ struct View {
 
 impl Default for View {
     fn default() -> Self {
-        View { names: NameMode::Username, key: SortKey::FirstCommit, ascending: true, table: false }
+        View { names: NameMode::DisplayName, key: SortKey::FirstCommit, ascending: true, table: false }
     }
 }
 
@@ -262,14 +262,17 @@ pub fn contributors_ui(ui: &mut egui::Ui) {
         } else if v.table {
             table(ui, &list, &mut v);
         } else {
-            ui.horizontal_wrapped(|ui| {
-                for (i, c) in list.iter().enumerate() {
-                    if i > 0 {
-                        ui.label(RichText::new("·").weak());
-                    }
-                    ui.hyperlink_to(c.name(v.names), c.github_url()).on_hover_text(c.summary());
-                }
-            });
+            ui.add_space(8.0);
+            for c in &list {
+                ui.horizontal_wrapped(|ui| {
+                    let url = c.github_url();
+                    let name = c.name(v.names);
+                    ui.hyperlink_to(RichText::new(&name).strong(), &url).on_hover_text(format!("{url}\n{}", c.summary()));
+                    ui.label(RichText::new("—").weak());
+                    ui.hyperlink_to(RichText::new(&url).small().weak(), &url);
+                });
+                ui.add_space(8.0);
+            }
         }
     });
     ui.data_mut(|d| d.insert_temp(id, v));
@@ -290,7 +293,8 @@ fn table(ui: &mut egui::Ui, list: &[&Contributor], v: &mut View) {
         }
         ui.end_row();
         for c in list {
-            ui.hyperlink_to(c.name(v.names), c.github_url()).on_hover_text(c.summary());
+            let url = c.github_url();
+            ui.hyperlink_to(c.name(v.names), &url).on_hover_text(format!("{url}\n{}", c.summary()));
             ui.label(group(c.prs));
             ui.label(group(c.commits));
             ui.label(group(c.lines_added));

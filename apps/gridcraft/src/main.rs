@@ -215,8 +215,17 @@ fn open_with_system(target: &str) {
     } else {
         "xdg-open"
     };
-    if let Err(e) = std::process::Command::new(cmd).arg(target).spawn() {
+    let res = std::process::Command::new(cmd).arg(target).spawn();
+    if let Err(e) = res {
         log::warn!("{cmd} {target}: {e}");
+        #[cfg(target_os = "linux")]
+        {
+            if std::process::Command::new("gio").args(["open", target]).spawn().is_err()
+                && std::process::Command::new("x-www-browser").arg(target).spawn().is_err()
+            {
+                let _ = std::process::Command::new("google-chrome").arg(target).spawn();
+            }
+        }
     }
 }
 
