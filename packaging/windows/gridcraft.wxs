@@ -14,18 +14,18 @@
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package
-      Name="GridCraft"
+      Name="Rustcalc"
       Manufacturer="Learning Machines LLC"
       Version="$(var.Version)"
       UpgradeCode="5511327B-F305-41BE-92D0-EB84944E7C4D"
       Scope="perMachine"
       Compressed="yes"
       Language="1033">
-    <SummaryInformation Description="GridCraft spreadsheet" Manufacturer="Learning Machines LLC" />
+    <SummaryInformation Description="Rustcalc spreadsheet" Manufacturer="Learning Machines LLC" />
     <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
          (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
     <MajorUpgrade AllowSameVersionUpgrades="yes"
-        DowngradeErrorMessage="A newer version of GridCraft is already installed." />
+        DowngradeErrorMessage="A newer version of Rustcalc is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <Icon Id="GridcraftIcon.ico" SourceFile="$(var.IconPath)" />

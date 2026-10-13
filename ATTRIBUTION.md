@@ -16,6 +16,7 @@ Generated-in-code art is original and has no file to list: the UI icon set (`cra
 | `docs/brand/artcraft-mark.png` | ArtCraft Team | craftrules `assets/brand/` | ArtCraft brand terms | Trademark |
 | `docs/brand/artcraft-mark-black.svg` | ArtCraft Team | craftrules `assets/brand/` | ArtCraft brand terms | Trademark |
 | `docs/brand/artcraft-mark-black.png` | ArtCraft Team | craftrules `assets/brand/` | ArtCraft brand terms | Trademark |
+| `docs/brand/rustcalc-logo.png` | Rustcalc contributors | original (Rustcalc brand wordmark logo) | MIT OR Apache-2.0 (`LICENSE-MIT`, `LICENSE-APACHE`) | Rustcalc brand logo |
 | `docs/brand/LICENSE-brand.txt` | (licence text) | craftrules | — | |
 | `assets/app-icon/gridcraft.svg` | GridCraft contributors | original (hand-written SVG; `packaging/icons.sh`) | MIT OR Apache-2.0 (`assets/app-icon/LICENSE.txt`) | PLACEHOLDER app icon (ledger page); replaced by the owner's creature art later |
 | `packaging/macos/dmg/background.svg` | @XusBadia | original (hand-written SVG, derived from the GridCraft app icon `assets/app-icon/gridcraft.svg`, referenced via `<image>`, not copied; text is outlined glyph paths; `packaging/macos/dmg/generate.py` renders it to `background.tiff`) | MIT OR Apache-2.0 (`LICENSE-MIT`, `LICENSE-APACHE`) | GridCraft macOS DMG window background for the Finder window; added 2026-10-08 |

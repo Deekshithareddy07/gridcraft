@@ -674,7 +674,7 @@ impl Dialog {
             "commandSearch" => Dialog::custom("commandSearch", "Search Commands", json!({})),
             "agents" => Dialog::custom("agents", "Agent Control", json!({})),
             "about" => {
-                let mut d = Dialog::custom("about", "About GridCraft", json!({}));
+                let mut d = Dialog::custom("about", "About Rustcalc", json!({}));
                 d.tab = match p("tab").as_str() {
                     Some(t @ ("Contributors" | "Models")) => t.to_string(),
                     _ => "About".into(),
@@ -776,7 +776,7 @@ impl Dialog {
             "pickList" => Dialog::custom("pickList", "Pick From List", json!({})),
             "saveCopy" => Dialog::custom("saveCopy", "Save a Copy", json!({"format": p("format")})),
             "saveChanges" => Dialog::custom("saveChanges", "Save Changes?", json!({"title": p("title")})),
-            "start" => Dialog::custom("start", "GridCraft", json!({})),
+            "start" => Dialog::custom("start", "Rustcalc", json!({})),
             "comments" => {
                 app.grid.pane = None;
                 app.run_or_alert("review.showComments", json!({"on": true}));
@@ -1063,7 +1063,7 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                 "solverResults" => solver_results(app, ui, &mut d, &mut open),
                 "spelling" => spelling(app, ui, &mut d, &mut open),
                 "agents" => {
-                    ui.label("GridCraft is fully drivable by agents. Every menu item, button and gesture is a command:");
+                    ui.label("Rustcalc is fully drivable by agents. Every menu item, button and gesture is a command:");
                     ui.add_space(4.0);
                     ui.monospace("gridcraft --control 7979        # JSON-lines control channel\ngridcraft-cli mcp --connect 7979   # MCP bridged to this window\ngridcraft-cli mcp                   # headless MCP server");
                     ui.add_space(4.0);
@@ -1483,7 +1483,19 @@ fn about(ui: &mut egui::Ui, d: &mut Dialog) {
         "Contributors" => crate::credits::contributors_ui(ui),
         "Models" => crate::credits::models_ui(ui),
         _ => {
-            ui.heading("GridCraft");
+            static LOGO_BYTES: &[u8] = include_bytes!("../../../docs/brand/rustcalc-logo.png");
+            if let Ok(img) = image::load_from_memory(LOGO_BYTES) {
+                let rgba = img.to_rgba8();
+                let size = [rgba.width() as usize, rgba.height() as usize];
+                let ci = egui::ColorImage::from_rgba_unmultiplied(size, rgba.as_raw());
+                let tex = ui.ctx().load_texture("rustcalc_brand_logo", ci, egui::TextureOptions::LINEAR);
+                let aspect = size[1] as f32 / size[0] as f32;
+                let display_w = 320.0f32.min(ui.available_width());
+                let display_h = display_w * aspect;
+                ui.image(egui::load::SizedTexture::new(tex.id(), egui::vec2(display_w, display_h)));
+                ui.add_space(8.0);
+            }
+            ui.heading("Rustcalc");
             ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
             ui.add_space(4.0);
             ui.label("A clean-room, open-source, Rust-native spreadsheet. Part of ArtCraft.");

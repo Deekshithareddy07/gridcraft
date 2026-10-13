@@ -1,28 +1,13 @@
-# GridCraft app icon (PLACEHOLDER)
+# Rustcalc app icon
 
-**This icon is temporary.** Every Crafting App's icon is an engraved creature portrait that the
-product owner makes (craftrules `standards/icon-design.md`); GridCraft's hasn't been made yet.
-Until it is, this placeholder stands in: a simple ledger page with a header row, a row-number
-column, a selected cell with its fill handle and a double rule under a total, on a full-bleed
-GridCraft-green tile. It is original geometry written by hand for this repository, deliberately
-not modelled on any vendor's spreadsheet logo (no letters, no "X", no overlapping panels).
-
-When the owner's art arrives, replace `gridcraft.svg`, run `packaging/icons.sh`, update this
-README (provenance, creature) and the rows in `ATTRIBUTION.md`, and drop the word placeholder.
+The app icon is a stylized "R" monogram derived from the Rustcalc brand identity, set on an emerald green tile.
 
 ## Palette
 
-Exactly three colours:
-
 | Colour | Hex | Used for |
 |---|---|---|
-| Ink | `#0b0b0c` | Line work and contour |
-| Paper | `#efe9dc` | The page |
-| GridCraft green (app colour, **proposed**) | `#1f9d55` | The full-bleed field and the header cells |
-
-The app colour is a proposal pending the owner's approval: GridCraft green `#1f9d55`, with ink
-(darker) variant `#147a40` for text and accents on light backgrounds. It differs from
-DesignCraft's `#7bb51c`.
+| Background tile | `#145032` | Deep emerald green field |
+| Monogram accent | `#9deac6` | Rustcalc mint brand accent |
 
 ## Geometry
 
