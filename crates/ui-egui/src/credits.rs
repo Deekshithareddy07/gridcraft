@@ -12,6 +12,7 @@ pub struct Contributor {
     pub login: &'static str,
     pub display_name: Option<&'static str>,
     pub real_name: Option<&'static str>,
+    pub url: Option<&'static str>,
     pub prs: u64,
     pub commits: u64,
     pub lines_added: u64,
@@ -115,6 +116,16 @@ impl Contributor {
             NameMode::RealName => self.real_name,
         };
         chosen.map_or_else(|| format!("@{}", self.login), str::to_string)
+    }
+
+    pub fn github_url(&self) -> String {
+        if let Some(u) = self.url {
+            return u.to_string();
+        }
+        if self.login.eq_ignore_ascii_case("sarika") {
+            return "https://github.com/BORAVELLISARIKAREDDY/BORAVELLISARIKAREDDY".to_string();
+        }
+        format!("https://github.com/{}", self.login)
     }
 
     pub fn lines_delta(&self) -> i128 {
@@ -256,7 +267,7 @@ pub fn contributors_ui(ui: &mut egui::Ui) {
                     if i > 0 {
                         ui.label(RichText::new("·").weak());
                     }
-                    ui.hyperlink_to(c.name(v.names), format!("https://github.com/{}", c.login)).on_hover_text(c.summary());
+                    ui.hyperlink_to(c.name(v.names), c.github_url()).on_hover_text(c.summary());
                 }
             });
         }
@@ -279,7 +290,7 @@ fn table(ui: &mut egui::Ui, list: &[&Contributor], v: &mut View) {
         }
         ui.end_row();
         for c in list {
-            ui.hyperlink_to(c.name(v.names), format!("https://github.com/{}", c.login)).on_hover_text(c.summary());
+            ui.hyperlink_to(c.name(v.names), c.github_url()).on_hover_text(c.summary());
             ui.label(group(c.prs));
             ui.label(group(c.commits));
             ui.label(group(c.lines_added));
@@ -336,6 +347,7 @@ mod tests {
             login,
             display_name: display,
             real_name: real,
+            url: None,
             prs: 0,
             commits: 1,
             lines_added: added,
@@ -358,6 +370,16 @@ mod tests {
 
     fn logins(v: &[&Contributor]) -> Vec<&'static str> {
         v.iter().map(|c| c.login).collect()
+    }
+
+    #[test]
+    fn contributor_github_urls() {
+        let d = c("deekshitha", None, None, 0, 0, "");
+        assert_eq!(d.github_url(), "https://github.com/deekshitha");
+        let mut s = c("sarika", None, None, 0, 0, "");
+        assert_eq!(s.github_url(), "https://github.com/BORAVELLISARIKAREDDY/BORAVELLISARIKAREDDY");
+        s.url = Some("https://github.com/BORAVELLISARIKAREDDY/BORAVELLISARIKAREDDY");
+        assert_eq!(s.github_url(), "https://github.com/BORAVELLISARIKAREDDY/BORAVELLISARIKAREDDY");
     }
 
     #[test]

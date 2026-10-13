@@ -71,11 +71,13 @@ fn generate(json: &Value, people: &toml::Table) -> String {
         let display = field("display_name")
             .filter(|s| !s.trim().is_empty())
             .or_else(|| if synced { c.get("github_name").and_then(Value::as_str) } else { None });
+        let url = field("github_url").or_else(|| field("url")).or_else(|| c.get("url").and_then(Value::as_str));
         let _ = writeln!(
             o,
-            "    Contributor {{ login: {login:?}, display_name: {}, real_name: {}, prs: {}, commits: {}, lines_added: {}, lines_deleted: {}, binary_added: {}, binary_deleted: {}, first_commit: {}, last_commit: {} }},",
+            "    Contributor {{ login: {login:?}, display_name: {}, real_name: {}, url: {}, prs: {}, commits: {}, lines_added: {}, lines_deleted: {}, binary_added: {}, binary_deleted: {}, first_commit: {}, last_commit: {} }},",
             name(display),
             name(field("real_name")),
+            name(url),
             n(&c, "prs"),
             n(&c, "commits"),
             n(&c, "lines_added"),
