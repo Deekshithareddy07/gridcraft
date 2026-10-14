@@ -98,6 +98,9 @@ jobs:
         with:
           key: release-linux-x86_64
 
+      - name: Apply version override
+        run: cargo run -q -p xtask --no-default-features -- version set "$GRIDCRAFT_VERSION"
+
       - name: Build and package (AppImage, deb, rpm, tar.gz)
         env:
           CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
@@ -153,6 +156,9 @@ jobs:
         with:
           key: release-linux-aarch64
 
+      - name: Apply version override
+        run: cargo run -q -p xtask --no-default-features -- version set "$GRIDCRAFT_VERSION"
+
       - name: Build and package (AppImage, deb, rpm, tar.gz)
         env:
           CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
@@ -200,6 +206,9 @@ jobs:
       - name: Install WiX Toolset
         run: |
           dotnet tool install --global wix --version 5.0.2 || dotnet tool update --global wix --version 5.0.2 || true
+
+      - name: Apply version override
+        run: cargo run -q -p xtask --no-default-features -- version set "$env:GRIDCRAFT_VERSION"
 
       - name: Build and package (MSI, portable ZIP)
         env:
@@ -252,6 +261,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: release-macos-universal
+
+      - name: Apply version override
+        run: cargo run -q -p xtask --no-default-features -- version set "$GRIDCRAFT_VERSION"
 
       - name: Build and package (DMG, CLI ZIP)
         env:
