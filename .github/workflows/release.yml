@@ -2,42 +2,328 @@ name: Release
 
 on:
   push:
-    branches: [release]
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version override for a test run, e.g. 0.2.0-rc.1 (empty: Cargo.toml)"
+      tag_name:
+        description: 'Tag or version override, e.g. v0.6.2 (leave empty to use git tag or Cargo.toml version)'
+        required: false
         type: string
-        default: ""
+        default: ''
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
-    # Intentionally tracked at @main (not SHA-pinned) so org-wide CI improvements, security fixes, and build optimizations propagate without PR churn across all craftapp repos.
-    uses: storytold/craft-common-actions/.github/workflows/release.yml@main
-    with:
-      app-name: gridcraft
-      app-title: GridCraft
-      craft-fonts-ref: abb83316d96aa59c1cf64784289e378fe9fa5695
-      version: ${{ inputs.version }}
-    secrets:
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
-      AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
-      AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
+  resolve-version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+      prerelease: ${{ steps.ver.outputs.prerelease }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - id: ver
+        name: Determine release version and tag
+        run: |
+          raw="${{ inputs.tag_name }}"
+          if [ -z "$raw" ]; then
+            raw="${{ github.ref_name }}"
+          fi
+          # Strip leading 'v' if present
+          v="${raw#v}"
+          # Fall back to Cargo.toml if not a valid semver pattern (e.g. branch name)
+          if ! printf '%s' "$v" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'; then
+            . packaging/env.sh
+            v="$VERSION"
+          fi
+          tag="v$v"
+          is_pre="false"
+          if [[ "$v" == *-* ]]; then
+            is_pre="true"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$is_pre" >> "$GITHUB_OUTPUT"
+          echo "Building release for tag $tag (version $v, prerelease=$is_pre)"
+
+  build-linux-x86_64:
+    name: Linux x86_64
+    needs: resolve-version
+    runs-on: ubuntu-22.04
+    env:
+      GRIDCRAFT_VERSION: ${{ needs.resolve-version.outputs.version }}
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+      RUST_BACKTRACE: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout craft-fonts (optional fonts)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: storytold/craft-fonts
+          ref: abb83316d96aa59c1cf64784289e378fe9fa5695
+          path: craft-fonts
+
+      - name: Install Linux build dependencies & packagers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev \
+            libxi-dev libgl1-mesa-dev desktop-file-utils appstream python3-yaml zsync
+          sudo apt-get install -y libfuse2t64 2>/dev/null || sudo apt-get install -y libfuse2 2>/dev/null || true
+          NFPM_VERSION=2.47.0
+          curl -fsSL -o /tmp/nfpm.deb "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_amd64.deb"
+          sudo dpkg -i /tmp/nfpm.deb
+          rm -f /tmp/nfpm.deb
+
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: release-linux-x86_64
+
+      - name: Build and package (AppImage, deb, rpm, tar.gz)
+        env:
+          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
+        run: packaging/linux/package.sh --formats "appimage deb rpm tar"
+
+      - name: Upload Linux x86_64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-x86_64
+          path: dist/release/*
+          if-no-files-found: error
+
+  build-linux-aarch64:
+    name: Linux aarch64
+    needs: resolve-version
+    runs-on: ubuntu-24.04-arm
+    env:
+      GRIDCRAFT_VERSION: ${{ needs.resolve-version.outputs.version }}
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+      RUST_BACKTRACE: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout craft-fonts (optional fonts)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: storytold/craft-fonts
+          ref: abb83316d96aa59c1cf64784289e378fe9fa5695
+          path: craft-fonts
+
+      - name: Install Linux build dependencies & packagers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev \
+            libxi-dev libgl1-mesa-dev desktop-file-utils appstream python3-yaml zsync
+          sudo apt-get install -y libfuse2t64 2>/dev/null || sudo apt-get install -y libfuse2 2>/dev/null || true
+          NFPM_VERSION=2.47.0
+          curl -fsSL -o /tmp/nfpm.deb "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_arm64.deb"
+          sudo dpkg -i /tmp/nfpm.deb
+          rm -f /tmp/nfpm.deb
+
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: release-linux-aarch64
+
+      - name: Build and package (AppImage, deb, rpm, tar.gz)
+        env:
+          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
+        run: packaging/linux/package.sh --formats "appimage deb rpm tar"
+
+      - name: Upload Linux aarch64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-aarch64
+          path: dist/release/*
+          if-no-files-found: error
+
+  build-windows-x64:
+    name: Windows x64
+    needs: resolve-version
+    runs-on: windows-latest
+    env:
+      GRIDCRAFT_VERSION: ${{ needs.resolve-version.outputs.version }}
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+      RUST_BACKTRACE: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout craft-fonts (optional fonts)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: storytold/craft-fonts
+          ref: abb83316d96aa59c1cf64784289e378fe9fa5695
+          path: craft-fonts
+
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --target x86_64-pc-windows-msvc
+          rustup default stable
+          rustup target add x86_64-pc-windows-msvc
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: release-windows-x64
+
+      - name: Install WiX Toolset
+        run: |
+          dotnet tool install --global wix --version 5.0.2 || dotnet tool update --global wix --version 5.0.2 || true
+
+      - name: Build and package (MSI, portable ZIP)
+        env:
+          CRAFT_FONTS_DIR: ${{ github.workspace }}\craft-fonts
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
+        run: pwsh packaging/windows/package.ps1 -Arch x64
+
+      - name: Upload Windows x64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-x64
+          path: dist/release/*
+          if-no-files-found: error
+
+  build-macos-universal:
+    name: macOS Universal
+    needs: resolve-version
+    runs-on: macos-14
+    env:
+      GRIDCRAFT_VERSION: ${{ needs.resolve-version.outputs.version }}
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+      RUST_BACKTRACE: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout craft-fonts (optional fonts)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: storytold/craft-fonts
+          ref: abb83316d96aa59c1cf64784289e378fe9fa5695
+          path: craft-fonts
+
+      - name: Install Rust toolchains and targets
+        run: |
+          rustup toolchain install stable --profile minimal --target aarch64-apple-darwin,x86_64-apple-darwin
+          rustup default stable
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: release-macos-universal
+
+      - name: Build and package (DMG, CLI ZIP)
+        env:
+          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || '-' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: packaging/macos/package.sh --arch universal
+
+      - name: Upload macOS Universal artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-universal
+          path: dist/release/*
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish Release Assets
+    needs:
+      - resolve-version
+      - build-linux-x86_64
+      - build-linux-aarch64
+      - build-windows-x64
+      - build-macos-universal
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA256 Checksums
+        working-directory: release-assets
+        run: |
+          rm -f SHA256SUMS.txt /tmp/SHA256SUMS.txt
+          sha256sum -- * > /tmp/SHA256SUMS.txt
+          mv /tmp/SHA256SUMS.txt SHA256SUMS.txt
+          echo "### Release Assets SHA256 Checksums" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat SHA256SUMS.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attach artifacts to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.resolve-version.outputs.tag }}
+          TITLE: GridCraft ${{ needs.resolve-version.outputs.tag }}
+          PRERELEASE: ${{ needs.resolve-version.outputs.prerelease }}
+        working-directory: release-assets
+        run: |
+          echo "Publishing artifacts for release $TAG ($TITLE)..."
+          pre_flag=()
+          if [ "$PRERELEASE" = "true" ]; then
+            pre_flag=(--prerelease)
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists. Uploading/updating assets..."
+            gh release upload "$TAG" --clobber -- *
+          else
+            echo "Creating release $TAG..."
+            gh release create "$TAG" \
+              --title "$TITLE" \
+              --generate-notes \
+              "${pre_flag[@]}" \
+              -- *
+          fi
