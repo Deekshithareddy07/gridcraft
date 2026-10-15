@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Build and package GridCraft for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
 #
-#   $DIST/gridcraft-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
-#   $DIST/gridcraft-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
-#   $DIST/gridcraft-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
-#   $DIST/gridcraft-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
-#   $DIST/gridcraft-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
+#   $DIST/Rustcalc-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
+#   $DIST/Rustcalc-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
+#   $DIST/rustcalc-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
+#   $DIST/rustcalc-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
+#   $DIST/rustcalc-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
 #
 # Usage: packaging/linux/package.sh [--skip-build] [--formats "appimage deb rpm tar"]
 #
@@ -124,7 +124,8 @@ if has appimage; then
   fi
   # Absolute, because appimagetool runs in $DIST below (CARGO_TARGET_DIR or APPIMAGETOOL may be
   # relative, e.g. target/agent-<name>).
-  OUT="$(cd "$DIST" && pwd)/$BASENAME.AppImage"
+  APPIMAGE_BASENAME="Rustcalc-$VERSION-linux-$ARCH"
+  OUT="$(cd "$DIST" && pwd)/$APPIMAGE_BASENAME.AppImage"
   APPDIR="$(cd "$APPDIR" && pwd)"
   TOOL="$(cd "$(dirname "$TOOL")" && pwd)/$(basename "$TOOL")"
   # A .zsync left by an earlier run would hide a missing zsyncmake and describe another file.
@@ -134,7 +135,7 @@ if has appimage; then
   # each AppImage on GitHub Releases. `latest` is the newest published release that is not a
   # pre-release. A fork's builds point at its own releases through GITHUB_REPOSITORY.
   REPO="${GITHUB_REPOSITORY:-storytold/gridcraft}"
-  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|rustcalc-*-linux-$ARCH.AppImage.zsync"
+  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|Rustcalc-*-linux-$ARCH.AppImage.zsync"
   # Extract-and-run: works without FUSE (containers, CI). The output embeds the static runtime,
   # so users don't need libfuse2 either. With zsyncmake on the host (CI installs the zsync
   # package) appimagetool also writes the .zsync, into its working directory, hence the cd.

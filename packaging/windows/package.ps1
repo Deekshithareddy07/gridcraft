@@ -4,8 +4,8 @@
 
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
-    gridcraft-<version>-windows-<arch>.msi            per-machine installer (WiX v5)
-    gridcraft-<version>-windows-<arch>-portable.zip   gridcraft.exe + gridcraft-cli.exe
+    Rustcalc-<version>-windows-<arch>.msi            per-machine installer (WiX v5)
+    Rustcalc-<version>-windows-<arch>-portable.zip   rustcalc.exe + rustcalc-cli.exe
 
   The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
   zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
@@ -96,7 +96,7 @@ Copy-Item (Join-Path $Bin $cliExe) (Join-Path $Stage 'gridcraft-cli.exe')
 & (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'rustcalc.exe') (Join-Path $Stage 'rustcalc-cli.exe')
 
 # ---- MSI ---------------------------------------------------------------------------------------
-$Msi = Join-Path $Dist "rustcalc-$Version-windows-$Arch.msi"
+$Msi = Join-Path $Dist "Rustcalc-$Version-windows-$Arch.msi"
 Invoke-Native 'wix build' {
   wix build (Join-Path $PSScriptRoot 'gridcraft.wxs') -arch $Arch `
     -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\gridcraft.ico')" `
@@ -107,7 +107,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Ms
 & (Join-Path $PSScriptRoot 'sign.ps1') $Msi
 
 # ---- portable zip ------------------------------------------------------------------------------
-$Portable = Join-Path $TargetDir "windows-package\rustcalc-$Version-windows-$Arch-portable"
+$Portable = Join-Path $TargetDir "windows-package\Rustcalc-$Version-windows-$Arch-portable"
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
 Copy-Item (Join-Path $Stage '*.exe') $Portable
@@ -121,7 +121,7 @@ if ($env:CRAFT_FONTS_DIR) {
     Copy-Item $ofl.FullName (Join-Path $Portable "OFL-$($ofl.Directory.Name).txt")
   }
 }
-$Zip = Join-Path $Dist "rustcalc-$Version-windows-$Arch-portable.zip"
+$Zip = Join-Path $Dist "Rustcalc-$Version-windows-$Arch-portable.zip"
 Remove-Item -Force $Zip -ErrorAction SilentlyContinue
 Compress-Archive -Path $Portable -DestinationPath $Zip
 
