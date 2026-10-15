@@ -1,0 +1,88 @@
+version: 53
+jobs:
+- name: Test
+  steps:
+  - type: CheckoutStep
+    name: checkout
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: test and check
+    runInContainer: true
+    image: rust:latest
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        apt-get update
+        apt-get install -y --no-install-recommends pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgtk-3-dev libfontconfig1-dev libfreetype-dev
+        cargo check --workspace
+        cargo test --workspace
+    runAs: 0:0
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  - type: BranchUpdateTrigger
+    branches: '**'
+    userMatch: anyone
+    projects: viskefi/gridcraft
+  - type: PullRequestUpdateTrigger
+    branches: '**'
+    userMatch: anyone
+    projects: viskefi/gridcraft
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
+  timeout: 3600
+- name: Build Release
+  steps:
+  - type: CheckoutStep
+    name: checkout
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build release binaries
+    runInContainer: true
+    image: rust:latest
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        apt-get update
+        apt-get install -y --no-install-recommends pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgtk-3-dev libfontconfig1-dev libfreetype-dev
+        cargo build --release -p gridcraft -p gridcraft-cli
+        mkdir -p dist/bin
+        cp target/release/gridcraft dist/bin/
+        cp target/release/gridcraft-cli dist/bin/
+        sha256sum dist/bin/gridcraft dist/bin/gridcraft-cli > dist/bin/SHA256SUMS.txt
+    runAs: 0:0
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifacts
+    artifacts: 'dist/bin/*'
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  - type: TagCreateTrigger
+    tags: 'v*'
+    userMatch: anyone
+    projects: viskefi/gridcraft
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
+  timeout: 3600

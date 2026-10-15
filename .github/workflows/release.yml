@@ -281,6 +281,46 @@ jobs:
           path: dist/release/*
           if-no-files-found: error
 
+  build-web:
+    name: Web (Wasm package)
+    needs: resolve-version
+    runs-on: ubuntu-24.04
+    env:
+      GRIDCRAFT_VERSION: ${{ needs.resolve-version.outputs.version }}
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable + wasm32)
+        run: |
+          rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
+          rustup default stable
+
+      - name: Install Trunk & tools
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends zip binaryen
+          curl -fsSL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz | sudo tar -xz -C /usr/local/bin
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: release-web
+
+      - name: Apply version override
+        run: cargo run -q -p xtask --no-default-features -- version set "$GRIDCRAFT_VERSION"
+
+      - name: Build Web package
+        run: packaging/web/package.sh
+
+      - name: Upload Web artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-web
+          path: dist/release/gridcraft-web-*.zip
+          if-no-files-found: error
+
   publish-release:
     name: Publish Release Assets
     needs:
@@ -289,6 +329,7 @@ jobs:
       - build-linux-aarch64
       - build-windows-x64
       - build-macos-universal
+      - build-web
     runs-on: ubuntu-latest
     permissions:
       contents: write
