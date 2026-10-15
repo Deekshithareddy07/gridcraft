@@ -18,8 +18,8 @@ fn main() {
         .set("FileDescription", "Rustcalc spreadsheet")
         .set("CompanyName", "Learning Machines LLC")
         .set("LegalCopyright", "Copyright (c) the Rustcalc authors. MIT OR Apache-2.0.")
-        .set("OriginalFilename", "gridcraft.exe")
-        .set("InternalName", "gridcraft");
+        .set("OriginalFilename", "rustcalc.exe")
+        .set("InternalName", "rustcalc");
     if let Err(e) = res.compile() {
         if std::env::var_os("GRIDCRAFT_REQUIRE_WINRES").is_some() {
             eprintln!("embedding Windows resources failed: {e}");

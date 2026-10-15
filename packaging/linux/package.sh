@@ -37,10 +37,10 @@ case "$ARCH" in
   aarch64 | arm64) ARCH=aarch64; DEB_ARCH=arm64 ;;
   *) echo "unsupported architecture $ARCH" >&2; exit 2 ;;
 esac
-export GRIDCRAFT_MAINTAINER="${GRIDCRAFT_MAINTAINER:-GridCraft maintainers <gridcraft@storyteller.ai>}"
-BASENAME="gridcraft-$VERSION-linux-$ARCH"
+export GRIDCRAFT_MAINTAINER="${GRIDCRAFT_MAINTAINER:-Rustcalc maintainers <rustcalc@storyteller.ai>}"
+BASENAME="rustcalc-$VERSION-linux-$ARCH"
 
-echo "==> GridCraft $VERSION for Linux $ARCH ($FORMATS)"
+echo "==> Rustcalc $VERSION for Linux $ARCH ($FORMATS)"
 
 if [ "$SKIP_BUILD" = 0 ]; then
   if [ -n "${CROSS_TARGET:-}" ]; then
@@ -55,9 +55,16 @@ STAGE="$WORK/root"
 rm -rf "$WORK"
 
 # ---- stage an FHS tree (shared by every format) -------------------------------------------------
-install -Dm755 "$BIN/gridcraft" "$STAGE/usr/bin/gridcraft"
-install -Dm755 "$BIN/gridcraft-cli" "$STAGE/usr/bin/gridcraft-cli"
-"${CROSS_COMPILE:-}strip" "$STAGE/usr/bin/gridcraft" "$STAGE/usr/bin/gridcraft-cli" 2>/dev/null || true
+MAIN_BIN="$BIN/rustcalc"
+CLI_BIN="$BIN/rustcalc-cli"
+[ -f "$MAIN_BIN" ] || MAIN_BIN="$BIN/gridcraft"
+[ -f "$CLI_BIN" ] || CLI_BIN="$BIN/gridcraft-cli"
+
+install -Dm755 "$MAIN_BIN" "$STAGE/usr/bin/rustcalc"
+ln -sf rustcalc "$STAGE/usr/bin/gridcraft"
+install -Dm755 "$CLI_BIN" "$STAGE/usr/bin/rustcalc-cli"
+ln -sf rustcalc-cli "$STAGE/usr/bin/gridcraft-cli"
+"${CROSS_COMPILE:-}strip" "$STAGE/usr/bin/rustcalc" "$STAGE/usr/bin/rustcalc-cli" 2>/dev/null || true
 install -Dm644 "$HERE/$APP_ID.desktop" "$STAGE/usr/share/applications/$APP_ID.desktop"
 install -Dm644 "$HERE/$APP_ID.mime.xml" "$STAGE/usr/share/mime/packages/$APP_ID.xml"
 mkdir -p "$STAGE/usr/share/metainfo"
@@ -99,10 +106,10 @@ fi
 
 # ---- AppImage -----------------------------------------------------------------------------------
 if has appimage; then
-  APPDIR="$WORK/GridCraft.AppDir"
+  APPDIR="$WORK/Rustcalc.AppDir"
   cp -R "$STAGE" "$APPDIR"
   mv "$APPDIR/usr/share/doc" "$WORK/doc-unused"
-  ln -s usr/bin/gridcraft "$APPDIR/AppRun"
+  ln -s usr/bin/rustcalc "$APPDIR/AppRun"
   cp "$HERE/$APP_ID.desktop" "$APPDIR/$APP_ID.desktop"
   cp "$ROOT/assets/app-icon/hicolor/256x256/apps/$APP_ID.png" "$APPDIR/$APP_ID.png"
   ln -s "$APP_ID.png" "$APPDIR/.DirIcon"
@@ -127,7 +134,7 @@ if has appimage; then
   # each AppImage on GitHub Releases. `latest` is the newest published release that is not a
   # pre-release. A fork's builds point at its own releases through GITHUB_REPOSITORY.
   REPO="${GITHUB_REPOSITORY:-storytold/gridcraft}"
-  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|gridcraft-*-linux-$ARCH.AppImage.zsync"
+  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|rustcalc-*-linux-$ARCH.AppImage.zsync"
   # Extract-and-run: works without FUSE (containers, CI). The output embeds the static runtime,
   # so users don't need libfuse2 either. With zsyncmake on the host (CI installs the zsync
   # package) appimagetool also writes the .zsync, into its working directory, hence the cd.
@@ -141,9 +148,9 @@ if has appimage; then
 fi
 
 if [ -z "${CROSS_TARGET:-}" ]; then
-  "$STAGE/usr/bin/gridcraft-cli" --version
+  "$STAGE/usr/bin/rustcalc-cli" --version
 elif [ -n "${EMULATOR:-}" ]; then
-  "$EMULATOR" "$STAGE/usr/bin/gridcraft-cli" --version
+  "$EMULATOR" "$STAGE/usr/bin/rustcalc-cli" --version
 fi
 echo "==> done"
 ls -lh "$DIST"
