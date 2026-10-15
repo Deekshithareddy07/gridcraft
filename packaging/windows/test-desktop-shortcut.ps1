@@ -14,18 +14,18 @@ Set-StrictMode -Version Latest
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
   throw 'This install test is restricted to disposable GitHub-hosted Windows runners.'
 }
-if (-not $WorkDir) { $WorkDir = Join-Path $env:RUNNER_TEMP 'gridcraft-shortcut-smoke' }
+if (-not $WorkDir) { $WorkDir = Join-Path $env:RUNNER_TEMP 'rustcalc-shortcut-smoke' }
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$InstallDir = Join-Path $env:ProgramFiles 'GridCraft'
-$DesktopLink = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'GridCraft.lnk'
-$StartLink = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'GridCraft.lnk'
-$ChoiceKey = 'HKLM:\Software\GridCraft\Installer'
-$ComponentKey = 'HKLM:\Software\GridCraft\Installer'
+$InstallDir = Join-Path $env:ProgramFiles 'Rustcalc'
+$DesktopLink = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'Rustcalc.lnk'
+$StartLink = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'Rustcalc.lnk'
+$ChoiceKey = 'HKLM:\Software\Rustcalc\Installer'
+$ComponentKey = 'HKLM:\Software\Rustcalc\Installer'
 $UninstallRoot = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
 $Icon = Join-Path $Root 'assets\app-icon\gridcraft.ico'
 if ((Test-Path $InstallDir) -or (Test-Path $DesktopLink) -or (Test-Path $StartLink) -or
-    (Test-Path 'HKLM:\Software\GridCraft') -or (Test-Path 'HKCU:\Software\GridCraft')) {
-  throw 'Refusing to run against an existing GridCraft installation or its settings.'
+    (Test-Path 'HKLM:\Software\Rustcalc') -or (Test-Path 'HKCU:\Software\Rustcalc')) {
+  throw 'Refusing to run against an existing Rustcalc installation or its settings.'
 }
 New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
 $Bin = Join-Path $WorkDir 'bin'
@@ -85,7 +85,7 @@ function Assert-Package($Package) {
   $key = Join-Path $UninstallRoot $Package.Code
   $registered = Get-ItemProperty -Path $key -ErrorAction Stop
   Assert-That ($registered.DisplayVersion -eq $Package.Version) "Wrong installed product version: $($Package.Version)"
-  foreach ($exe in 'gridcraft.exe', 'gridcraft-cli.exe') {
+  foreach ($exe in 'rustcalc.exe', 'rustcalc-cli.exe') {
     Assert-That (Test-Path (Join-Path $InstallDir $exe)) "$exe missing after installation"
   }
   Assert-That (Test-Path $StartLink) 'The existing Start Menu shortcut is missing'
@@ -95,7 +95,7 @@ function Assert-Desktop([bool] $Enabled) {
   Assert-That ((Test-Path $DesktopLink) -eq $Enabled) "Desktop shortcut presence should be $Enabled"
   $marker = Get-OptionalRegistryValue $ComponentKey 'DesktopShortcutComponent'
   Assert-That (($null -ne $marker) -eq $Enabled) 'Shortcut component marker must match the machine-wide shortcut'
-  Assert-That ($null -eq (Get-OptionalRegistryValue 'HKCU:\Software\GridCraft\Installer' 'DesktopShortcutComponent')) 'Shortcut component must not leave a per-user marker'
+  Assert-That ($null -eq (Get-OptionalRegistryValue 'HKCU:\Software\Rustcalc\Installer' 'DesktopShortcutComponent')) 'Shortcut component must not leave a per-user marker'
   $choice = Get-ItemPropertyValue -Path $ChoiceKey -Name DesktopShortcut
   Assert-That ($choice -eq $(if ($Enabled) { '1' } else { '0' })) 'Installer did not persist the selected desktop choice'
   if (-not $Enabled) { return }
@@ -103,7 +103,7 @@ function Assert-Desktop([bool] $Enabled) {
   $shortcut = $null
   try {
     $shortcut = $shell.CreateShortcut($DesktopLink)
-    Assert-That ($shortcut.TargetPath -ieq (Join-Path $InstallDir 'gridcraft.exe')) 'Desktop shortcut targets the wrong executable'
+    Assert-That ($shortcut.TargetPath -ieq (Join-Path $InstallDir 'rustcalc.exe')) 'Desktop shortcut targets the wrong executable'
     Assert-That ($shortcut.WorkingDirectory.TrimEnd('\') -ieq $InstallDir.TrimEnd('\')) 'Desktop shortcut has the wrong working directory'
     Assert-That ($shortcut.IconLocation -match '^(.*),\s*0$') 'Desktop shortcut must use icon index zero'
     $iconPath = [Environment]::ExpandEnvironmentVariables($Matches[1].Trim('"'))
@@ -129,7 +129,7 @@ function Assert-Removed($Package) {
 function Uninstall-AsSystem($Package) {
   # Exercise removal under a different account without creating a user or credentials.
   # This function is covered by the disposable hosted-runner guard at the top of the script.
-  $taskName = 'GridCraft-shortcut-' + [Guid]::NewGuid().ToString('N')
+  $taskName = 'Rustcalc-shortcut-' + [Guid]::NewGuid().ToString('N')
   $log = Join-Path $WorkDir 'uninstall-as-system.log'
   $action = New-ScheduledTaskAction -Execute (Join-Path $env:WINDIR 'System32\msiexec.exe') `
     -Argument "/x $($Package.Code) /qn /norestart /l*v `"$log`""
@@ -164,13 +164,13 @@ function Uninstall-AsSystem($Package) {
 $source = Join-Path $WorkDir 'Stub.cs'
 'public static class Program { public static void Main() { } }' | Set-Content -Path $source -Encoding utf8
 $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-foreach ($fixture in @(@('gridcraft.exe', 'winexe'), @('gridcraft-cli.exe', 'exe'))) {
+foreach ($fixture in @(@('rustcalc.exe', 'winexe'), @('rustcalc-cli.exe', 'exe'))) {
   & $csc /nologo /platform:x64 "/target:$($fixture[1])" "/out:$(Join-Path $Bin $fixture[0])" $source
   if ($LASTEXITCODE -ne 0) { throw 'Could not compile installer fixture' }
 }
 $packages = @()
 foreach ($version in '90.0.0', '90.0.1', '90.0.2') {
-  $msi = Join-Path $WorkDir "gridcraft-$version.msi"
+  $msi = Join-Path $WorkDir "Rustcalc-$version.msi"
   & wix build (Join-Path $PSScriptRoot 'gridcraft.wxs') -arch x64 `
     -d "Version=$version" -d "BinDir=$Bin" -d "IconPath=$Icon" -o $msi | Write-Host
   if ($LASTEXITCODE -ne 0) { throw "WiX failed to build $version" }

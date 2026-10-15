@@ -166,7 +166,6 @@
               Description="Rustcalc spreadsheet" WorkingDirectory="INSTALLFOLDER" Advertise="yes"
               Icon="GridcraftIcon.ico" IconIndex="0" />
         </File>
-        <File Id="GridcraftCompatExe" Source="$(var.BinDir)\gridcraft.exe" />
 
         <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\rustcalc.exe" Value="[#GridcraftExe]" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\gridcraft.exe" Value="[#GridcraftExe]" Type="string" />
@@ -202,7 +201,6 @@
 
       <Component Id="GridcraftCli">
         <File Id="GridcraftCliExe" Source="$(var.BinDir)\rustcalc-cli.exe" KeyPath="yes" />
-        <File Id="GridcraftCliCompatExe" Source="$(var.BinDir)\gridcraft-cli.exe" />
       </Component>
 
       <!-- Persist both on and off, independently of the optional shortcut. AppSearch reads
